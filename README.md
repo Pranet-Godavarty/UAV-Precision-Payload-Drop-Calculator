@@ -1,4 +1,4 @@
-# **RC Plane Payload Drop Calculator - Technical Documentation**
+# **UAV Payload Drop Calculator - Technical Documentation**
 
 ## **Overview**
 A Python-based tool for calculating optimal payload release points for RC aircraft operations. The application combines aerodynamic principles with geospatial data to determine precise drop coordinates based on flight parameters and terrain elevation.
