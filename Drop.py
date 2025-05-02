@@ -6,18 +6,16 @@ from geopy.distance import distance
 from geopy.point import Point
 import tkintermapview
 
-# --- Get ground altitude from Open-Elevation ---
 def get_ground_altitude(lat, lon):
     try:
         res = requests.get("https://api.open-elevation.com/api/v1/lookup",
-                           params={"locations": f"{lat},{lon}"}, timeout=5)
+                         params={"locations": f"{lat},{lon}"}, timeout=5)
         res.raise_for_status()
         return res.json()["results"][0]["elevation"]
     except Exception as e:
         messagebox.showerror("Altitude Error", f"Could not fetch ground altitude:\n{e}")
         return None
 
-# --- Main drop calculation ---
 def calculate_drop():
     try:
         m = float(entry_weight.get()) / 1000  # g to kg
@@ -70,13 +68,27 @@ def calculate_drop():
     except Exception as e:
         messagebox.showerror("Input Error", str(e))
 
-# --- GUI setup ---
+def on_map_click(coords):
+    """Set target location when map is clicked"""
+    entry_lat.delete(0, tk.END)
+    entry_lat.insert(0, f"{coords[0]:.6f}")
+    entry_lon.delete(0, tk.END)
+    entry_lon.insert(0, f"{coords[1]:.6f}")
+    map_widget.delete_all_marker()
+    map_widget.set_marker(coords[0], coords[1], text="🎯 Target")
+
+# Main window setup
 root = tk.Tk()
 root.title("UAV Payload Drop Calculator")
+root.state('zoomed')  # Start maximized
+
+# Configure grid weights for resizing
+root.grid_columnconfigure(1, weight=1)
+root.grid_rowconfigure(0, weight=1)
 
 # Left panel
 left_frame = ttk.Frame(root, padding=10)
-left_frame.grid(row=0, column=0, sticky="ns")
+left_frame.grid(row=0, column=0, sticky="nsew")
 
 fields = [
     ("Payload Weight (g):", "entry_weight"),
@@ -89,7 +101,7 @@ fields = [
 
 entries = {}
 for i, (label_text, var_name) in enumerate(fields):
-    ttk.Label(left_frame, text=label_text).grid(row=i, column=0, sticky="e")
+    ttk.Label(left_frame, text=label_text).grid(row=i, column=0, sticky="e", pady=2)
     entry = ttk.Entry(left_frame, width=20)
     entry.grid(row=i, column=1, pady=2)
     entries[var_name] = entry
@@ -101,13 +113,29 @@ entry_heading = entries["entry_heading"]
 entry_lat = entries["entry_lat"]
 entry_lon = entries["entry_lon"]
 
-ttk.Button(left_frame, text="Calculate Drop Point", command=calculate_drop).grid(row=len(fields), column=0, columnspan=2, pady=10)
+# Set default values
+entry_weight.insert(0, "500")
+entry_altitude.insert(0, "100")
+entry_speed.insert(0, "30")
+entry_heading.insert(0, "0")
 
+# Calculate button
+ttk.Button(left_frame, text="Calculate Drop Point", command=calculate_drop).grid(
+    row=len(fields), column=0, columnspan=2, pady=10)
+
+# Results display
 result_text = tk.StringVar()
-ttk.Label(left_frame, textvariable=result_text, justify="left", padding=5, foreground="blue").grid(row=len(fields)+1, column=0, columnspan=2)
+ttk.Label(left_frame, textvariable=result_text, justify="left", padding=5, 
+         foreground="blue").grid(row=len(fields)+1, column=0, columnspan=2)
 
-# Map
+# Map widget
 map_widget = tkintermapview.TkinterMapView(root, width=800, height=600, corner_radius=0)
-map_widget.grid(row=0, column=1, padx=10, pady=10)
+map_widget.grid(row=0, column=1, sticky="nsew", padx=10, pady=10)
+
+# Configure map
+map_widget.set_tile_server("https://mt0.google.com/vt/lyrs=s&hl=en&x={x}&y={y}&z={z}&s=Ga", max_zoom=22)
+map_widget.set_position(39.8283, -98.5795)  # Center of US
+map_widget.set_zoom(4)  # Show all of North America
+map_widget.add_left_click_map_command(on_map_click)  # Click to place marker
 
 root.mainloop()
